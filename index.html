@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>📝 منظم المهام اليومية</title>
+    <style>
+        /* ========== التنسيق العام ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 30px 25px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            transition: 0.3s;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.2rem;
+            color: #1e3c72;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        h1 span {
+            background: #f0c27f;
+            padding: 5px 15px;
+            border-radius: 50px;
+            font-size: 1rem;
+            color: #1e3c72;
+        }
+
+        /* ========== نموذج الإضافة ========== */
+        .add-task {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 25px;
+            background: #f8f9fc;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .add-task input,
+        .add-task button {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .add-task input {
+            flex: 1 1 180px;
+            background: white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        .add-task input:focus {
+            box-shadow: 0 0 0 3px #2a5298;
+        }
+
+        .add-task input[type="date"],
+        .add-task input[type="time"] {
+            flex: 0 1 150px;
+        }
+
+        .add-task button {
+            background: #2a5298;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            flex: 0 1 120px;
+            box-shadow: 0 4px 10px rgba(42, 82, 152, 0.3);
+        }
+
+        .add-task button:hover {
+            background: #1e3c72;
+            transform: scale(1.02);
+        }
+
+        /* ========== تحميل الصوت ========== */
+        .sound-upload {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #eef2f7;
+            padding: 10px 20px;
+            border-radius: 50px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .sound-upload label {
+            font-weight: 600;
+            color: #1e3c72;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sound-upload input[type="file"] {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 8px;
+        }
+
+        .sound-upload .current-sound {
+            font-size: 0.9rem;
+            color: #555;
+            background: white;
+            padding: 4px 14px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        /* ========== قائمة المهام ========== */
+        .tasks-list {
+            list-style: none;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-left: 5px;
+        }
+
+        .tasks-list li {
+            background: white;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            border-right: 6px solid #2a5298;
+            transition: 0.2s;
+        }
+
+        .tasks-list li:hover {
+            transform: translateX(-4px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .task-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 2;
+            min-width: 150px;
+        }
+
+        .task-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #1e2b47;
+        }
+
+        .task-datetime {
+            font-size: 0.9rem;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .task-datetime .badge {
+            background: #f0c27f;
+            padding: 2px 12px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #1e3c72;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .task-actions button {
+            background: transparent;
+            border: none;
+            font-size: 1.4rem;
+            cursor: pointer;
+            padding: 4px 10px;
+            border-radius: 30px;
+            transition: 0.2s;
+        }
+
+        .task-actions .delete-btn {
+            color: #e74c3c;
+        }
+        .task-actions .delete-btn:hover {
+            background: #fde8e8;
+        }
+
+        .task-actions .sound-btn {
+            color: #2a5298;
+        }
+        .task-actions .sound-btn:hover {
+            background: #e3ecfa;
+        }
+
+        /* ========== رسائل ========== */
+        .empty-msg {
+            text-align: center;
+            color: #999;
+            padding: 30px 0;
+            font-size: 1.1rem;
+        }
+
+        /* ========== تذييل ========== */
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #aaa;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        /* ========== استجابة ========== */
+        @media (max-width: 600px) {
+            .container { padding: 20px 15px; }
+            .add-task input { flex: 1 1 100%; }
+            .add-task input[type="date"],
+            .add-task input[type="time"] { flex: 1 1 45%; }
+            .add-task button { flex: 1 1 100%; }
+            .tasks-list li { flex-direction: column; align-items: stretch; }
+            .task-actions { justify-content: flex-end; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>
+        📝 منظم المهام
+        <span>⏰ يومي</span>
+    </h1>
+
+    <!-- نموذج إضافة مهمة -->
+    <div class="add-task">
+        <input type="text" id="taskTitle" placeholder="📌 عنوان المهمة..." />
+        <input type="date" id="taskDate" />
+        <input type="time" id="taskTime" />
+        <button id="addBtn">➕ إضافة</button>
+    </div>
+
+    <!-- تحميل الصوت -->
+    <div class="sound-upload">
+        <label for="soundFile">🔊 تحميل صوت التنبيه:</label>
+        <input type="file" id="soundFile" accept="audio/*" />
+        <span class="current-sound" id="currentSoundLabel">🔔 الصوت الافتراضي</span>
+    </div>
+
+    <!-- قائمة المهام -->
+    <ul class="tasks-list" id="tasksList">
+        <li class="empty-msg">✨ لا توجد مهام حالياً – أضف مهمتك الأولى!</li>
+    </ul>
+
+    <div class="footer">
+        💾 يتم الحفظ تلقائياً · يتم فحص التنبيهات كل 30 ثانية
+    </div>
+</div>
+
+<script>
+    // ======================================================================
+    //  JavaScript – منطق التطبيق
+    // ======================================================================
+
+    // ---------- عناصر DOM ----------
+    const taskTitle = document.getElementById('taskTitle');
+    const taskDate = document.getElementById('taskDate');
+    const taskTime = document.getElementById('taskTime');
+    const addBtn = document.getElementById('addBtn');
+    const tasksList = document.getElementById('tasksList');
+    const soundFileInput = document.getElementById('soundFile');
+    const currentSoundLabel = document.getElementById('currentSoundLabel');
+
+    // ---------- متغيرات ----------
+    let tasks = [];
+    let alarmSound = null;             // سيحتوي على كائن Audio
+    let customSoundUrl = null;         // رابط الصوت المخصص (إن وجد)
+    let alarmInterval = null;
+
+    // ---------- تهيئة التاريخ والوقت الافتراضي ----------
+    function setDefaultDateTime() {
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().slice(0, 5);
+        taskDate.value = dateStr;
+        taskTime.value = timeStr;
+    }
+    setDefaultDateTime();
+
+    // ---------- تحميل المهام من localStorage ----------
+    function loadTasks() {
+        const stored = localStorage.getItem('dailyTasks');
+        if (stored) {
+            try {
+                tasks = JSON.parse(stored);
+            } catch (e) {
+                tasks = [];
+            }
+        } else {
+            // بيانات تجريبية للعرض
+            tasks = [
+                { id: Date.now() + 1, title: '📌 اجتماع الفريق', date: '2026-08-25', time: '10:00' },
+                { id: Date.now() + 2, title: '📝 مراجعة التقرير', date: '2026-08-26', time: '14:30' }
+            ];
+        }
+        renderTasks();
+    }
+
+    // ---------- حفظ المهام في localStorage ----------
+    function saveTasks() {
+        localStorage.setItem('dailyTasks', JSON.stringify(tasks));
+    }
+
+    // ---------- عرض المهام في الواجهة ----------
+    function renderTasks() {
+        if (tasks.length === 0) {
+            tasksList.innerHTML = `<li class="empty-msg">✨ لا توجد مهام حالياً – أضف مهمتك الأولى!</li>`;
+            return;
+        }
+
+        // ترتيب المهام حسب التاريخ والوقت (الأقرب أولاً)
+        const sorted = [...tasks].sort((a, b) => {
+            const da = new Date(`${a.date}T${a.time}`);
+            const db = new Date(`${b.date}T${b.time}`);
+            return da - db;
+        });
+
+        let html = '';
+        sorted.forEach(task => {
+            const taskDateObj = new Date(`${task.date}T${task.time}`);
+            const now = new Date();
+            const isPast = taskDateObj < now;
+
+            html += `
+                <li style="${isPast ? 'opacity:0.6; border-right-color:#999;' : ''}">
+                    <div class="task-info">
+                        <div class="task-title">${escapeHtml(task.title)}</div>
+                        <div class="task-datetime">
+                            📅 ${task.date} &nbsp; ⏰ ${task.time}
+                            ${isPast ? '<span class="badge" style="background:#ddd;">⏳ مضى</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="task-actions">
+                        <button class="sound-btn" data-id="${task.id}" title="تشغيل التنبيه يدوياً">🔊</button>
+                        <button class="delete-btn" data-id="${task.id}" title="حذف المهمة">🗑️</button>
+                    </div>
+                </li>
+            `;
+        });
+
+        tasksList.innerHTML = html;
+
+        // إضافة مستمعي الأحداث للأزرار
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = Number(btn.dataset.id);
+                deleteTask(id);
+            });
+        });
+
+        document.querySelectorAll('.sound-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = Number(btn.dataset.id);
+                const task = tasks.find(t => t.id === id);
+                if (task) {
+                    playAlarm(`🔔 تنبيه: ${task.title}`);
+                }
+            });
+        });
+    }
+
+    // ---------- دالة مساعدة لتشفير HTML (أمان) ----------
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ---------- إضافة مهمة جديدة ----------
+    function addTask() {
+        const title = taskTitle.value.trim();
+        const date = taskDate.value;
+        const time = taskTime.value;
+
+        if (!title) {
+            alert('⚠️ الرجاء كتابة عنوان المهمة.');
+            return;
+        }
+        if (!date || !time) {
+            alert('⚠️ الرجاء اختيار التاريخ والوقت.');
+            return;
+        }
+
+        // التحقق من أن الوقت ليس في الماضي (اختياري)
+        const taskDateTime = new Date(`${date}T${time}`);
+        if (taskDateTime < new Date()) {
+            if (!confirm('⏳ هذا الموعد في الماضي. هل تريد إضافته على أي حال؟')) {
+                return;
+            }
+        }
+
+        const newTask = {
+            id: Date.now(),
+            title: title,
+            date: date,
+            time: time
+        };
+
+        tasks.push(newTask);
+        saveTasks();
+        renderTasks();
+
+        // إعادة تعيين الحقول مع الاحتفاظ بالتاريخ والوقت الحاليين
+        taskTitle.value = '';
+        setDefaultDateTime();
+        taskTitle.focus();
+    }
+
+    // ---------- حذف مهمة ----------
+    function deleteTask(id) {
+        if (!confirm('🗑️ هل أنت متأكد من حذف هذه المهمة؟')) return;
+        tasks = tasks.filter(t => t.id !== id);
+        saveTasks();
+        renderTasks();
+    }
+
+    // ---------- تشغيل التنبيه الصوتي ----------
+    function playAlarm(message = '🔔 تنبيه!') {
+        // إذا كان هناك صوت مخصص، استخدمه، وإلا استخدم النغمة الافتراضية
+        if (customSoundUrl) {
+            const audio = new Audio(customSoundUrl);
+            audio.play().catch(err => console.warn('تعذر تشغيل الصوت:', err));
+        } else {
+            // نغمة افتراضية (تنبيه بسيط عبر Web Audio)
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = 800;
+                gain.gain.value = 0.3;
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                setTimeout(() => { osc.stop(); }, 800);
+            } catch (e) {
+                console.warn('تعذر تشغيل الصوت الافتراضي');
+            }
+        }
+
+        // عرض تنبيه في المتصفح (اختياري)
+        if (Notification.permission === 'granted') {
+            new Notification('⏰ منظم المهام', { body: message });
+        } else if (Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // تنبيه نصي في الصفحة (يمكن إظهاره بشكل منبثق)
+        alert(message);
+    }
+
+    // ---------- فحص المهام للتنبيه ----------
+    function checkAlarms() {
+        const now = new Date();
+        const nowStr = now.toISOString().slice(0, 16).replace('T', ' '); // "2026-08-24 15:30"
+
+        tasks.forEach(task => {
+            const taskDateTime = new Date(`${task.date}T${task.time}`);
+            // نفحص إذا كان الوقت الحالي يساوي وقت المهمة (ضمن دقيقة واحدة)
+            const diff = Math.abs(now - taskDateTime);
+            if (diff < 60000) { // أقل من 60 ثانية
+                playAlarm(`🔔 ${task.title} - ${task.date} ${task.time}`);
+            }
+        });
+    }
+
+    // ---------- تحميل الصوت المخصص ----------
+    soundFileInput.addEventListener('change', function(e) {
+        const file = this.files[0];
+        if (!file) return;
+
+        // نتحقق من أن الملف صوتي
+        if (!file.type.startsWith('audio/')) {
+            alert('⚠️ الرجاء اختيار ملف صوتي (mp3, wav, ogg ...)');
+            this.value = '';
+            return;
+        }
+
+        const url = URL.createObjectURL(file);
+        customSoundUrl = url;
+        currentSoundLabel.textContent = `🎵 ${file.name}`;
+
+        // اختبار تشغيل الصوت
+        const testAudio = new Audio(url);
+        testAudio.play().then(() => {
+            console.log('✅ تم تحميل الصوت واختباره بنجاح');
+        }).catch(err => {
+            console.warn('⚠️ تعذر اختبار الصوت:', err);
+            alert('⚠️ لا يمكن تشغيل هذا الملف الصوتي، تأكد من أنه صحيح.');
+            customSoundUrl = null;
+            currentSoundLabel.textContent = '🔔 الصوت الافتراضي';
+        });
+    });
+
+    // ---------- طلب إذن الإشعارات ----------
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+
+    // ---------- بدء الفحص الدوري للتنبيهات ----------
+    function startAlarmChecker() {
+        if (alarmInterval) clearInterval(alarmInterval);
+        alarmInterval = setInterval(checkAlarms, 30000); // كل 30 ثانية
+        // فحص فوري عند التحميل
+        setTimeout(checkAlarms, 1000);
+    }
+
+    // ---------- مستمعات الأحداث ----------
+    addBtn.addEventListener('click', addTask);
+    taskTitle.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
+
+    // ---------- تهيئة التطبيق ----------
+    loadTasks();
+    startAlarmChecker();
+
+    // حفظ المهام عند إغلاق الصفحة (إضافي)
+    window.addEventListener('beforeunload', () => {
+        saveTasks();
+        if (customSoundUrl) {
+            // تحرير الرابط المؤقت (اختياري)
+            // URL.revokeObjectURL(customSoundUrl);
+        }
+    });
+
+    console.log('📝 منظم المهام جاهز!');
+</script>
+
+</body>
+</html>
