@@ -1,0 +1,61 @@
+name: 📱 بناء تطبيق APK من كود الويب
+
+on:
+  # يُشغَّل عند الدفع إلى الفرع الرئيسي
+  push:
+    branches: [ "main", "master" ]
+  # يُشغَّل عند إنشاء علامة (tag) جديدة (مثل v1.0.0)
+  push:
+    tags:
+      - 'v*'
+  # يسمح بتشغيله يدوياً من واجهة GitHub
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # ضروري لرفع الملف إلى Releases
+
+    steps:
+      # 1. سحب كود المستودع (سيحتوي على index.html)
+      - name: 📥 سحب الكود
+        uses: actions/checkout@v4
+
+      # 2. تحويل ملف HTML إلى تطبيق APK باستخدام PWA2APK
+      - name: 🔨 بناء ملف APK
+        uses: shamiko/action-pwa2apk@v1
+        id: build_apk
+        with:
+          # اسم التطبيق الذي سيظهر في هاتف المستخدم
+          appName: 'منظم المهام اليومية'
+          
+          # المعرف الفريد للتطبيق (يجب أن يكون فريداً)
+          packageName: 'com.yourusername.taskorganizer'
+          
+          # الإصدار (رقم الإصدار الظاهر)
+          versionName: '1.0.0'
+          versionCode: '1'
+          
+          # مسار ملف HTML الأساسي (افتراضي هو index.html)
+          source: './index.html'
+          
+          # (اختياري) مسار شعار التطبيق - يمكنك وضع ملف icon.png في المستودع
+          # icon: './icon.png'
+
+      # 3. رفع ملف APK الناتج كـ Artifact (يمكن تحميله من تبويب Actions)
+      - name: ⬆️ رفع APK كـ Artifact مؤقت
+        uses: actions/upload-artifact@v4
+        with:
+          name: تطبيق-المهام-اليومية
+          path: ${{ steps.build_apk.outputs.apk_path }}
+
+      # 4. إذا كانت هناك علامة (tag)، ننشئ إصداراً (Release) ونرفق فيه الـ APK
+      - name: 🏷️ إنشاء إصدار وإرفاق APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.build_apk.outputs.apk_path }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
