@@ -1,33 +1,42 @@
-name: Build APK from PWA
+name: Build APK (Android Wrapper)
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch:  # يمكنك تشغيله يدويًا من GitHub
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: ضبط Java (JDK 17)
+        uses: actions/setup-java@v4
         with:
-          node-version: '18'
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Install pwa2apk
-        run: npm install -g pwa2apk
+      - name: ضبط Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Build APK
+      - name: سحب مشروع Android الجاهز
+        run: git clone https://github.com/xtools-at/Android-PWA-Wrapper.git
+
+      - name: تعديل رابط تطبيقك داخل المشروع
         run: |
-          npx pwa2apk https://studiounp.lovable.app/manifest.json \
-            --package com.yourcompany.studiounp \
-            --output ./app.apk
+          cd Android-PWA-Wrapper/app/src/main/java/at/xtools/pwawrapper
+          sed -i 's|_WEBAPP_URL_|https://studiounp.lovable.app|g' Constants.java
 
-      - name: Upload APK
+      - name: منح صلاحيات التنفيذ لـ Gradle
+        run: chmod +x Android-PWA-Wrapper/gradlew
+
+      - name: بناء الـ APK (نسخة Debug)
+        run: |
+          cd Android-PWA-Wrapper
+          ./gradlew assembleDebug --no-daemon
+
+      - name: رفع ملف APK الناتج
         uses: actions/upload-artifact@v4
         with:
           name: studiounp-app
-          path: ./app.apk
+          path: Android-PWA-Wrapper/app/build/outputs/apk/debug/*.apk
