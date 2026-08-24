@@ -1,4 +1,4 @@
-name: Build APK using Python + Gradle
+name: Build APK with Fixed Android Wrapper
 
 on:
   push:
@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: ضبط Java (JDK 17)
+      - name: تثبيت Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: ضبط Android SDK
+      - name: تثبيت Android SDK
         uses: android-actions/setup-android@v3
 
       - name: تثبيت Python
@@ -24,58 +24,92 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: سحب مشروع Android الجاهز
+      - name: سحب المشروع
         run: git clone https://github.com/xtools-at/Android-PWA-Wrapper.git
 
-      - name: استخدام Python لتعديل الملفات وتحديث الإصدارات
+      - name: إصلاح شامل للمشروع باستخدام Python
         run: |
-          python3 << EOF
-          import os
-          import re
+          python3 << 'EOF'
+          import os, re, subprocess, shutil
 
-          # 1. تعديل رابط التطبيق
-          constants_path = "Android-PWA-Wrapper/app/src/main/java/at/xtools/pwawrapper/Constants.java"
-          with open(constants_path, 'r') as f:
+          # 1. تحديث Gradle Wrapper إلى إصدار 7.2 (متوافق مع Android SDK 34)
+          with open("Android-PWA-Wrapper/gradle/wrapper/gradle-wrapper.properties", "r") as f:
               content = f.read()
-          content = content.replace('_WEBAPP_URL_', 'https://studiounp.lovable.app')
-          with open(constants_path, 'w') as f:
+          content = content.replace("gradle-6.5-bin.zip", "gradle-7.2-bin.zip")
+          with open("Android-PWA-Wrapper/gradle/wrapper/gradle-wrapper.properties", "w") as f:
               f.write(content)
+          print("✅ تم تحديث Gradle Wrapper إلى 7.2")
+
+          # 2. تحديث build.gradle على مستوى المشروع
+          with open("Android-PWA-Wrapper/build.gradle", "r") as f:
+              content = f.read()
+          # إزالة أي إصدارات قديمة وإضافة المستودعات الصحيحة
+          content = """// Top-level build file where you can add configuration options common to all sub-projects/modules.
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:7.2.0'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          task clean(type: Delete) {
+              delete rootProject.buildDir
+          }
+          """
+          with open("Android-PWA-Wrapper/build.gradle", "w") as f:
+              f.write(content)
+          print("✅ تم تحديث build.gradle الرئيسي")
+
+          # 3. تحديث build.gradle الخاص بالتطبيق
+          with open("Android-PWA-Wrapper/app/build.gradle", "r") as f:
+              app_content = f.read()
+          # استبدال القيم
+          app_content = re.sub(r'compileSdkVersion \d+', 'compileSdkVersion 34', app_content)
+          app_content = re.sub(r'targetSdkVersion \d+', 'targetSdkVersion 34', app_content)
+          app_content = re.sub(r'minSdkVersion \d+', 'minSdkVersion 21', app_content)
+          # التأكد من وجود applicationId
+          if 'applicationId' not in app_content:
+              app_content = app_content.replace('defaultConfig {', 'defaultConfig {\n            applicationId "com.xtools.pwawrapper"')
+          with open("Android-PWA-Wrapper/app/build.gradle", "w") as f:
+              f.write(app_content)
+          print("✅ تم تحديث build.gradle الخاص بالتطبيق")
+
+          # 4. تعديل Constants.java لإدراج رابط التطبيق
+          constants_path = "Android-PWA-Wrapper/app/src/main/java/at/xtools/pwawrapper/Constants.java"
+          with open(constants_path, "r") as f:
+              const_content = f.read()
+          const_content = const_content.replace('_WEBAPP_URL_', 'https://studiounp.lovable.app')
+          with open(constants_path, "w") as f:
+              f.write(const_content)
           print("✅ تم تحديث رابط التطبيق")
 
-          # 2. تحديث Gradle Wrapper إلى إصدار حديث
-          props_path = "Android-PWA-Wrapper/gradle/wrapper/gradle-wrapper.properties"
-          with open(props_path, 'r') as f:
-              content = f.read()
-          content = content.replace('gradle-6.5-bin.zip', 'gradle-8.4-bin.zip')
-          with open(props_path, 'w') as f:
-              f.write(content)
-          print("✅ تم تحديث Gradle Wrapper")
+          # 5. إضافة ملف gradle.properties لتجنب أخطاء الذاكرة
+          with open("Android-PWA-Wrapper/gradle.properties", "w") as f:
+              f.write("org.gradle.jvmargs=-Xmx2048m\nandroid.useAndroidX=true\nandroid.enableJetifier=true\n")
+          print("✅ تم إنشاء gradle.properties")
 
-          # 3. تحديث build.gradle (تحديد SDK)
-          build_path = "Android-PWA-Wrapper/app/build.gradle"
-          with open(build_path, 'r') as f:
-              content = f.read()
-          content = re.sub(r'compileSdkVersion \d+', 'compileSdkVersion 34', content)
-          content = re.sub(r'targetSdkVersion \d+', 'targetSdkVersion 34', content)
-          with open(build_path, 'w') as f:
-              f.write(content)
-          print("✅ تم تحديث إصدارات SDK")
+          # 6. تنظيف أي ملفات غير ضرورية قد تسبب تعارضاً
+          shutil.rmtree("Android-PWA-Wrapper/.gradle", ignore_errors=True)
+          print("✅ تم تنظيف ملفات Gradle المؤقتة")
           EOF
 
       - name: منح صلاحيات التنفيذ لـ Gradle
         run: chmod +x Android-PWA-Wrapper/gradlew
 
-      - name: تنظيف المشروع
-        run: |
-          cd Android-PWA-Wrapper
-          ./gradlew clean --no-daemon
-
-      - name: بناء الـ APK
+      - name: بناء APK
         run: |
           cd Android-PWA-Wrapper
           ./gradlew assembleDebug --stacktrace --no-daemon
 
-      - name: رفع ملف APK
+      - name: رفع APK
         uses: actions/upload-artifact@v4
         with:
           name: studiounp-app
