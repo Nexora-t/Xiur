@@ -1,4 +1,4 @@
-name: Build APK (Manual SDK)
+name: Build APK (Manual SDK with CLI Tools)
 
 on:
   push:
@@ -16,26 +16,30 @@ jobs:
           distribution: 'temurin'
           java-version: '11'
 
-      - name: تثبيت Android SDK عبر apt
+      - name: تنزيل Android Command Line Tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y android-sdk
-          echo "ANDROID_HOME=/usr/lib/android-sdk" >> $GITHUB_ENV
-          echo "PATH=$PATH:/usr/lib/android-sdk/platform-tools:/usr/lib/android-sdk/tools/bin" >> $GITHUB_ENV
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip commandlinetools-linux-9477386_latest.zip -d cmdline-tools
+          mv cmdline-tools cmdline-tools-tmp
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools-tmp/* cmdline-tools/latest/
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "PATH=$PATH:$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools" >> $GITHUB_ENV
 
-      - name: تثبيت منصة Android 34 وأدوات البناء
+      - name: تهيئة SDK وتثبيت المنصات
         run: |
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" --verbose
+          mkdir -p $ANDROID_HOME
+          yes | sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-34" "build-tools;34.0.0" "platform-tools" > /dev/null
 
-      - name: سحب المشروع
+      - name: سحب مشروع Android-PWA-Wrapper
         run: git clone https://github.com/xtools-at/Android-PWA-Wrapper.git
 
-      - name: تحديث الإعدادات
+      - name: تحديث الإعدادات (بدون Python)
         run: |
           # تحديث Gradle Wrapper
           sed -i 's/gradle-.*-bin.zip/gradle-7.2-bin.zip/g' Android-PWA-Wrapper/gradle/wrapper/gradle-wrapper.properties
 
-          # تحديث build.gradle الرئيسي
+          # استبدال build.gradle الرئيسي
           cat > Android-PWA-Wrapper/build.gradle << 'EOF'
           buildscript {
               repositories {
@@ -62,16 +66,16 @@ jobs:
           sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 34/g' Android-PWA-Wrapper/app/build.gradle
           sed -i 's/minSdkVersion [0-9]*/minSdkVersion 21/g' Android-PWA-Wrapper/app/build.gradle
 
-          # تحديث رابط التطبيق
+          # إدراج رابط تطبيقك
           sed -i 's|_WEBAPP_URL_|https://studiounp.lovable.app|g' Android-PWA-Wrapper/app/src/main/java/at/xtools/pwawrapper/Constants.java
 
       - name: منح صلاحيات التنفيذ لـ Gradle
         run: chmod +x Android-PWA-Wrapper/gradlew
 
-      - name: تنظيف وبناء APK
+      - name: بناء APK
         run: |
           cd Android-PWA-Wrapper
-          ./gradlew clean assembleDebug --stacktrace --no-daemon
+          ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: رفع APK
         uses: actions/upload-artifact@v4
