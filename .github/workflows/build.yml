@@ -1,13 +1,10 @@
 name: 📱 بناء تطبيق APK من كود الويب
 
 on:
-  # يُشغَّل عند الدفع إلى الفرع الرئيسي
+  # ✅ دمج branches و tags في push واحدة
   push:
     branches: [ "main", "master" ]
-  # يُشغَّل عند إنشاء علامة (tag) جديدة (مثل v1.0.0)
-  push:
-    tags:
-      - 'v*'
+    tags: [ "v*" ]          # يُشغّل عند إنشاء tag يبدأ بـ v (مثل v1.0.0)
   # يسمح بتشغيله يدوياً من واجهة GitHub
   workflow_dispatch:
 
@@ -18,7 +15,7 @@ jobs:
       contents: write  # ضروري لرفع الملف إلى Releases
 
     steps:
-      # 1. سحب كود المستودع (سيحتوي على index.html)
+      # 1. سحب كود المستودع
       - name: 📥 سحب الكود
         uses: actions/checkout@v4
 
@@ -27,30 +24,21 @@ jobs:
         uses: shamiko/action-pwa2apk@v1
         id: build_apk
         with:
-          # اسم التطبيق الذي سيظهر في هاتف المستخدم
           appName: 'منظم المهام اليومية'
-          
-          # المعرف الفريد للتطبيق (يجب أن يكون فريداً)
           packageName: 'com.yourusername.taskorganizer'
-          
-          # الإصدار (رقم الإصدار الظاهر)
           versionName: '1.0.0'
           versionCode: '1'
-          
-          # مسار ملف HTML الأساسي (افتراضي هو index.html)
           source: './index.html'
-          
-          # (اختياري) مسار شعار التطبيق - يمكنك وضع ملف icon.png في المستودع
-          # icon: './icon.png'
+          # icon: './icon.png'   # (اختياري) أضف هذا السطر إذا كان لديك أيقونة
 
-      # 3. رفع ملف APK الناتج كـ Artifact (يمكن تحميله من تبويب Actions)
-      - name: ⬆️ رفع APK كـ Artifact مؤقت
+      # 3. رفع ملف APK كـ Artifact مؤقت (للتحميل من تبويب Actions)
+      - name: ⬆️ رفع APK كـ Artifact
         uses: actions/upload-artifact@v4
         with:
           name: تطبيق-المهام-اليومية
           path: ${{ steps.build_apk.outputs.apk_path }}
 
-      # 4. إذا كانت هناك علامة (tag)، ننشئ إصداراً (Release) ونرفق فيه الـ APK
+      # 4. إذا كان هناك Tag، أنشئ Release وأرفق الـ APK
       - name: 🏷️ إنشاء إصدار وإرفاق APK
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
