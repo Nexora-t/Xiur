@@ -1,74 +1,33 @@
-name: 📱 بناء تطبيق APK باستخدام Cordova
+name: Build APK from PWA
 
 on:
   push:
-    branches: [ "main", "master" ]
-    tags: [ "v*" ]
-  workflow_dispatch:
+    branches: [ "main" ]
+  workflow_dispatch: # يسمح بتشغيل البناء يدويًا
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
-      - name: 📥 سحب الكود
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1. تثبيت Java (مطلوب لأدوات Android)
-      - name: ☕ تثبيت Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      # 2. تثبيت Android SDK وأدوات البناء
-      - name: 📦 تثبيت Android SDK
-        uses: android-actions/setup-android@v3
-
-      # 3. تثبيت Node.js و Cordova
-      - name: 🟢 تثبيت Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - name: 📦 تثبيت Cordova
-        run: npm install -g cordova
+      - name: Install pwa2apk
+        run: npm install -g pwa2apk
 
-      # 4. إنشاء مشروع Cordova وتهيئته (مع نسخ الملفات بشكل صحيح)
-      - name: 🏗️ إنشاء مشروع Cordova
+      - name: Build APK from PWA
         run: |
-          cordova create myApp com.yourusername.taskorganizer "منظم المهام اليومية"
-          cd myApp
-          # حذف الملفات الافتراضية في www
-          rm -rf www/*
-          # نسخ كل محتويات المستودع (باستثناء مجلد myApp نفسه) إلى www/
-          # استخدم rsync مع استبعاد myApp
-          rsync -av --exclude='myApp' ../ ./www/
-          # إضافة منصة Android
-          cordova platform add android
-          # بناء التطبيق (نسخة debug)
-          cordova build android --debug
+          pwa2apk https://studiounp.lovable.app/manifest.json \
+            --package com.yourcompany.studiounp \
+            --output ./app.apk
 
-      # 5. نقل ملف APK الناتج إلى مكان واضح
-      - name: 📂 نقل APK إلى الجذر
-        run: |
-          cp myApp/platforms/android/app/build/outputs/apk/debug/app-debug.apk ./app.apk
-
-      # 6. رفع APK كـ Artifact
-      - name: ⬆️ رفع APK كـ Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: تطبيق-المهام-اليومية
+          name: studiounp-app
           path: ./app.apk
-
-      # 7. إنشاء Release مع APK (إذا كان هناك Tag)
-      - name: 🏷️ إنشاء إصدار وإرفاق APK
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ./app.apk
-          generate_release_notes: true
-          draft: false
-          prerelease: false
