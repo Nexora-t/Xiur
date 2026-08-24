@@ -1,4 +1,4 @@
-name: Build APK with Fixed SDK
+name: Build APK (Manual SDK)
 
 on:
   push:
@@ -16,23 +16,26 @@ jobs:
           distribution: 'temurin'
           java-version: '11'
 
-      - name: تثبيت Android SDK
-        uses: android-actions/setup-android@v3
+      - name: تثبيت Android SDK عبر apt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y android-sdk
+          echo "ANDROID_HOME=/usr/lib/android-sdk" >> $GITHUB_ENV
+          echo "PATH=$PATH:/usr/lib/android-sdk/platform-tools:/usr/lib/android-sdk/tools/bin" >> $GITHUB_ENV
 
       - name: تثبيت منصة Android 34 وأدوات البناء
         run: |
-          yes | sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
-          sdkmanager --list
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" --verbose
 
       - name: سحب المشروع
         run: git clone https://github.com/xtools-at/Android-PWA-Wrapper.git
 
       - name: تحديث الإعدادات
         run: |
-          # تحديث Gradle Wrapper إلى 7.2 (متوافق مع Java 11)
+          # تحديث Gradle Wrapper
           sed -i 's/gradle-.*-bin.zip/gradle-7.2-bin.zip/g' Android-PWA-Wrapper/gradle/wrapper/gradle-wrapper.properties
 
-          # تحديث build.gradle الرئيسي لإصلاح المستودعات
+          # تحديث build.gradle الرئيسي
           cat > Android-PWA-Wrapper/build.gradle << 'EOF'
           buildscript {
               repositories {
@@ -59,7 +62,7 @@ jobs:
           sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 34/g' Android-PWA-Wrapper/app/build.gradle
           sed -i 's/minSdkVersion [0-9]*/minSdkVersion 21/g' Android-PWA-Wrapper/app/build.gradle
 
-          # تحديث رابط التطبيق في Constants.java
+          # تحديث رابط التطبيق
           sed -i 's|_WEBAPP_URL_|https://studiounp.lovable.app|g' Android-PWA-Wrapper/app/src/main/java/at/xtools/pwawrapper/Constants.java
 
       - name: منح صلاحيات التنفيذ لـ Gradle
