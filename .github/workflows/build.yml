@@ -1,4 +1,4 @@
-name: Build APK with Java 11
+name: Build APK with Fixed SDK
 
 on:
   push:
@@ -8,33 +8,67 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: تثبيت Java 11
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11'  # تغيير الإصدار من 17 إلى 11
+          java-version: '11'
 
       - name: تثبيت Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: تثبيت منصة Android 34 وأدوات البناء
+        run: |
+          yes | sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          sdkmanager --list
+
       - name: سحب المشروع
         run: git clone https://github.com/xtools-at/Android-PWA-Wrapper.git
 
-      - name: تحديث الإعدادات (بدون Python)
+      - name: تحديث الإعدادات
         run: |
-          # تحديث Gradle Wrapper
+          # تحديث Gradle Wrapper إلى 7.2 (متوافق مع Java 11)
           sed -i 's/gradle-.*-bin.zip/gradle-7.2-bin.zip/g' Android-PWA-Wrapper/gradle/wrapper/gradle-wrapper.properties
-          # تحديث Constants.java
+
+          # تحديث build.gradle الرئيسي لإصلاح المستودعات
+          cat > Android-PWA-Wrapper/build.gradle << 'EOF'
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:7.2.0'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          task clean(type: Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
+
+          # تحديث build.gradle الخاص بالتطبيق
+          sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 34/g' Android-PWA-Wrapper/app/build.gradle
+          sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 34/g' Android-PWA-Wrapper/app/build.gradle
+          sed -i 's/minSdkVersion [0-9]*/minSdkVersion 21/g' Android-PWA-Wrapper/app/build.gradle
+
+          # تحديث رابط التطبيق في Constants.java
           sed -i 's|_WEBAPP_URL_|https://studiounp.lovable.app|g' Android-PWA-Wrapper/app/src/main/java/at/xtools/pwawrapper/Constants.java
 
-      - name: منح صلاحيات التنفيذ
+      - name: منح صلاحيات التنفيذ لـ Gradle
         run: chmod +x Android-PWA-Wrapper/gradlew
 
-      - name: بناء APK
+      - name: تنظيف وبناء APK
         run: |
           cd Android-PWA-Wrapper
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew clean assembleDebug --stacktrace --no-daemon
 
       - name: رفع APK
         uses: actions/upload-artifact@v4
