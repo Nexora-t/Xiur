@@ -1,49 +1,64 @@
 name: 📱 بناء تطبيق APK من كود الويب
 
 on:
-  # ✅ دمج branches و tags في push واحدة
   push:
     branches: [ "main", "master" ]
-    tags: [ "v*" ]          # يُشغّل عند إنشاء tag يبدأ بـ v (مثل v1.0.0)
-  # يسمح بتشغيله يدوياً من واجهة GitHub
+    tags: [ "v*" ]
   workflow_dispatch:
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # ضروري لرفع الملف إلى Releases
+      contents: write
 
     steps:
-      # 1. سحب كود المستودع
       - name: 📥 سحب الكود
         uses: actions/checkout@v4
 
-      # 2. تحويل ملف HTML إلى تطبيق APK باستخدام PWA2APK
-      - name: 🔨 بناء ملف APK
-        uses: shamiko/action-pwa2apk@v1
-        id: build_apk
+      # 1. تثبيت Java (مطلوب لأدوات Android)
+      - name: ☕ تثبيت Java 17
+        uses: actions/setup-java@v4
         with:
-          appName: 'منظم المهام اليومية'
-          packageName: 'com.yourusername.taskorganizer'
-          versionName: '1.0.0'
-          versionCode: '1'
-          source: './index.html'
-          # icon: './icon.png'   # (اختياري) أضف هذا السطر إذا كان لديك أيقونة
+          distribution: 'temurin'
+          java-version: '17'
 
-      # 3. رفع ملف APK كـ Artifact مؤقت (للتحميل من تبويب Actions)
+      # 2. تثبيت Android SDK وأدوات البناء
+      - name: 📦 تثبيت Android SDK
+        uses: android-actions/setup-android@v3
+
+      # 3. تثبيت Node.js و pwa2apk
+      - name: 🟢 تثبيت Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 📦 تثبيت pwa2apk
+        run: npm install -g pwa2apk
+
+      # 4. بناء ملف APK باستخدام pwa2apk
+      - name: 🔨 تحويل index.html إلى APK
+        run: |
+          pwa2apk --input ./index.html \
+                  --output ./app.apk \
+                  --name "منظم المهام اليومية" \
+                  --package "com.yourusername.taskorganizer" \
+                  --version "1.0.0" \
+                  --versionCode 1
+
+      # 5. رفع APK كـ Artifact للتحميل المؤقت
       - name: ⬆️ رفع APK كـ Artifact
         uses: actions/upload-artifact@v4
         with:
           name: تطبيق-المهام-اليومية
-          path: ${{ steps.build_apk.outputs.apk_path }}
+          path: ./app.apk
 
-      # 4. إذا كان هناك Tag، أنشئ Release وأرفق الـ APK
+      # 6. إنشاء Release مع APK (إذا كان هناك Tag)
       - name: 🏷️ إنشاء إصدار وإرفاق APK
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.build_apk.outputs.apk_path }}
+          files: ./app.apk
           generate_release_notes: true
           draft: false
           prerelease: false
