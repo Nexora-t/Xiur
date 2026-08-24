@@ -36,21 +36,19 @@ jobs:
       - name: 📦 تثبيت Cordova
         run: npm install -g cordova
 
-      # 4. إنشاء مشروع Cordova وتهيئته
+      # 4. إنشاء مشروع Cordova وتهيئته (مع نسخ الملفات بشكل صحيح)
       - name: 🏗️ إنشاء مشروع Cordova
         run: |
           cordova create myApp com.yourusername.taskorganizer "منظم المهام اليومية"
           cd myApp
-          # حذف الملفات الافتراضية واستبدالها بملفاتنا
+          # حذف الملفات الافتراضية في www
           rm -rf www/*
-          cp -r ../* www/  # نسخ كل الملفات من الجذر (بما فيها index.html)
+          # نسخ كل محتويات المستودع (باستثناء مجلد myApp نفسه) إلى www/
+          # استخدم rsync مع استبعاد myApp
+          rsync -av --exclude='myApp' ../ ./www/
           # إضافة منصة Android
           cordova platform add android
-          # إضافة الإذن بالإنترنت (افتراضي موجود)
-          # بناء التطبيق (نسخة release)
-          cordova build android --release -- --keystore=../dummy.keystore --storePassword=password --alias=alias --keyPassword=password
-          # لكن لا يوجد keystore حقيقي، لذلك سنستخدم debug build مؤقتاً
-          # سنقوم ببناء debug بدلاً من release للتسهيل
+          # بناء التطبيق (نسخة debug)
           cordova build android --debug
 
       # 5. نقل ملف APK الناتج إلى مكان واضح
